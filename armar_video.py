@@ -16,6 +16,7 @@ import json
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 from rutas_sistema import ruta_ffmpeg
@@ -48,28 +49,33 @@ def _log_memoria(etiqueta):
 def _correr(args, etiqueta=""):
     """Corre un comando y, si podemos medir memoria (Linux), va anotando
     el PICO de memoria del contenedor mientras el proceso corre (no solo
-    antes/después, que se puede perder el momento exacto del pico)."""
-    proceso = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    antes/después, que se puede perder el momento exacto del pico).
 
-    pico_mb = _memoria_cgroup_mb()
-    while proceso.poll() is None:
-        actual = _memoria_cgroup_mb()
-        if actual is not None and (pico_mb is None or actual > pico_mb):
-            pico_mb = actual
-        try:
-            proceso.wait(timeout=0.2)
-        except subprocess.TimeoutExpired:
-            pass
+    Importante: la salida de FFmpeg se manda a un archivo temporal, NUNCA
+    a un pipe sin leer — si el pipe se llena (FFmpeg escribe mucho texto
+    de progreso) el proceso se queda trabado esperando para siempre."""
+    with tempfile.TemporaryFile(mode="w+", encoding="utf-8", errors="replace") as salida_log:
+        proceso = subprocess.Popen(args, stdout=salida_log, stderr=subprocess.STDOUT, text=True)
 
-    _, stderr = proceso.communicate()
+        pico_mb = _memoria_cgroup_mb()
+        while proceso.poll() is None:
+            actual = _memoria_cgroup_mb()
+            if actual is not None and (pico_mb is None or actual > pico_mb):
+                pico_mb = actual
+            try:
+                proceso.wait(timeout=0.2)
+            except subprocess.TimeoutExpired:
+                pass
 
-    if etiqueta and pico_mb is not None:
-        print(f"[memoria] pico durante {etiqueta}: {pico_mb:.0f} MB", flush=True)
+        if etiqueta and pico_mb is not None:
+            print(f"[memoria] pico durante {etiqueta}: {pico_mb:.0f} MB", flush=True)
 
-    if proceso.returncode != 0:
-        print("ERROR de FFmpeg:")
-        print((stderr or "")[-3000:])
-        raise SystemExit(1)
+        if proceso.returncode != 0:
+            salida_log.seek(0)
+            texto = salida_log.read()
+            print("ERROR de FFmpeg:")
+            print(texto[-3000:])
+            raise SystemExit(1)
 
 
 def _armar_segmento(imagen_fondo, capa_archivo, duracion, fundido, salida, etiqueta=""):
