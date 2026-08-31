@@ -26,15 +26,53 @@ FFMPEG = ruta_ffmpeg()
 DURACION_FUNDIDO = 0.35
 
 
-def _correr(args):
-    resultado = subprocess.run(args, capture_output=True, text=True)
-    if resultado.returncode != 0:
+def _memoria_cgroup_mb():
+    """Lee cuánta memoria está usando TODO el contenedor (no solo Python),
+    que es lo que decide si el servidor se queda sin memoria. Solo
+    funciona en Linux (Render); en Windows devuelve None sin romper nada."""
+    for ruta in ("/sys/fs/cgroup/memory.current", "/sys/fs/cgroup/memory/memory.usage_in_bytes"):
+        try:
+            with open(ruta) as f:
+                return int(f.read().strip()) / (1024 * 1024)
+        except (FileNotFoundError, ValueError):
+            continue
+    return None
+
+
+def _log_memoria(etiqueta):
+    mb = _memoria_cgroup_mb()
+    if mb is not None:
+        print(f"[memoria] {etiqueta}: {mb:.0f} MB", flush=True)
+
+
+def _correr(args, etiqueta=""):
+    """Corre un comando y, si podemos medir memoria (Linux), va anotando
+    el PICO de memoria del contenedor mientras el proceso corre (no solo
+    antes/después, que se puede perder el momento exacto del pico)."""
+    proceso = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+    pico_mb = _memoria_cgroup_mb()
+    while proceso.poll() is None:
+        actual = _memoria_cgroup_mb()
+        if actual is not None and (pico_mb is None or actual > pico_mb):
+            pico_mb = actual
+        try:
+            proceso.wait(timeout=0.2)
+        except subprocess.TimeoutExpired:
+            pass
+
+    _, stderr = proceso.communicate()
+
+    if etiqueta and pico_mb is not None:
+        print(f"[memoria] pico durante {etiqueta}: {pico_mb:.0f} MB", flush=True)
+
+    if proceso.returncode != 0:
         print("ERROR de FFmpeg:")
-        print(resultado.stderr[-3000:])
+        print((stderr or "")[-3000:])
         raise SystemExit(1)
 
 
-def _armar_segmento(imagen_fondo, capa_archivo, duracion, fundido, salida):
+def _armar_segmento(imagen_fondo, capa_archivo, duracion, fundido, salida, etiqueta=""):
     """Arma un tramo corto de video: fondo + (opcionalmente) una capa de
     texto con fundido de entrada. Sin audio (se agrega al final, una sola vez)."""
     args = [FFMPEG, "-y", "-loop", "1", "-framerate", "30", "-i", str(imagen_fondo)]
@@ -61,7 +99,7 @@ def _armar_segmento(imagen_fondo, capa_archivo, duracion, fundido, salida):
     ]
     args += [str(salida)]
 
-    _correr(args)
+    _correr(args, etiqueta=etiqueta or "segmento")
 
 
 def armar_video(fecha, imagen_fondo="fondos/fondo_galaxia_fijo.png"):
@@ -92,13 +130,13 @@ def armar_video(fecha, imagen_fondo="fondos/fondo_galaxia_fijo.png"):
     primer_inicio = capas[0]["inicio"] if capas else duracion_total
     if primer_inicio > 0:
         archivo = carpeta_temp / "seg_00_intro.mp4"
-        _armar_segmento(ruta_imagen_fondo, None, primer_inicio, DURACION_FUNDIDO, archivo)
+        _armar_segmento(ruta_imagen_fondo, None, primer_inicio, DURACION_FUNDIDO, archivo, etiqueta="intro")
         segmentos.append(archivo)
 
     for i, capa in enumerate(capas, start=1):
         duracion = capa["fin"] - capa["inicio"]
         archivo = carpeta_temp / f"seg_{i:02d}.mp4"
-        _armar_segmento(ruta_imagen_fondo, capa["archivo"], duracion, DURACION_FUNDIDO, archivo)
+        _armar_segmento(ruta_imagen_fondo, capa["archivo"], duracion, DURACION_FUNDIDO, archivo, etiqueta=f"segmento {i}")
         segmentos.append(archivo)
         print(f"  Segmento {i}/{len(capas)} listo.")
 
@@ -112,7 +150,7 @@ def armar_video(fecha, imagen_fondo="fondos/fondo_galaxia_fijo.png"):
     _correr([
         FFMPEG, "-y", "-f", "concat", "-safe", "0", "-i", str(lista_txt),
         "-c", "copy", str(video_sin_audio),
-    ])
+    ], etiqueta="concat")
 
     # --- Agregamos el audio narrado (una sola vez, al final) ---
     _correr([
@@ -120,7 +158,7 @@ def armar_video(fecha, imagen_fondo="fondos/fondo_galaxia_fijo.png"):
         "-c:v", "copy", "-c:a", "aac", "-b:a", "160k",
         "-t", str(duracion_total),
         str(salida),
-    ])
+    ], etiqueta="mux audio")
 
     shutil.rmtree(carpeta_temp, ignore_errors=True)
 

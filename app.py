@@ -88,24 +88,46 @@ def listar_borradores():
     return items
 
 
+def _memoria_mb():
+    for ruta in ("/sys/fs/cgroup/memory.current", "/sys/fs/cgroup/memory/memory.usage_in_bytes"):
+        try:
+            with open(ruta) as f:
+                return int(f.read().strip()) / (1024 * 1024)
+        except (FileNotFoundError, ValueError):
+            continue
+    return None
+
+
+def _log_memoria(etiqueta):
+    mb = _memoria_mb()
+    if mb is not None:
+        print(f"[memoria] {etiqueta}: {mb:.0f} MB", flush=True)
+
+
 def pipeline_completo(guion):
     """Corre audio + capas + video. Se llama en un hilo aparte para no
     bloquear la página mientras FFmpeg trabaja (tarda 1-3 minutos)."""
     fecha = guion["fecha"]
     try:
+        _log_memoria("inicio del pipeline")
+
         escribir_estado(fecha, "audio", "Generando la voz narrada...")
         generar_audio_del_guion(guion)
+        _log_memoria("después de audio")
 
         escribir_estado(fecha, "capas", "Dibujando los textos del video...")
         with open(RAIZ / "audio" / fecha / "timeline.json", encoding="utf-8") as f:
             timeline = json.load(f)
         generar_capas(guion, timeline, RAIZ / "capas" / fecha)
+        _log_memoria("después de capas")
 
         escribir_estado(fecha, "video", "Armando el video final...")
         armar_video(fecha)
+        _log_memoria("después de armar video")
 
         escribir_estado(fecha, "subiendo", "Subiendo el video a la nube...")
         subir_reel(fecha, guion)
+        _log_memoria("después de subir")
 
         escribir_estado(fecha, "listo", "Video listo.")
     except Exception as e:
