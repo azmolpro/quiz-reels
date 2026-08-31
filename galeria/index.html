@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Quiz Reels — Galería</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Karla:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <style>
+    :root {
+      --bg: #f3f1fb;
+      --surface: #ffffff;
+      --surface-alt: #ece9f9;
+      --text: #1f1b3a;
+      --text-muted: #5b5578;
+      --accent: #5b3df5;
+      --accent-ink: #ffffff;
+      --border: #ddd8f0;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Karla', system-ui, sans-serif;
+      padding: 24px 16px 60px;
+    }
+    .wrap { max-width: 900px; margin: 0 auto; }
+    h1, h2 { font-family: 'Fredoka', system-ui, sans-serif; font-weight: 700; margin: 0; }
+    .topbar { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .topbar .logo { font-family: 'Fredoka', system-ui, sans-serif; font-weight: 700; font-size: 1.3rem; }
+    .sub { color: var(--text-muted); margin: 0 0 28px; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 18px;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      overflow: hidden;
+      box-shadow: 0 1px 2px rgba(31,27,58,0.05), 0 6px 18px rgba(31,27,58,0.05);
+      display: flex;
+      flex-direction: column;
+    }
+    .card video {
+      width: 100%;
+      aspect-ratio: 9/16;
+      background: #000;
+      display: block;
+    }
+    .card-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+    .fecha { font-weight: 700; font-family: 'Fredoka', system-ui, sans-serif; }
+    .preguntas { font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; margin: 0; }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      font-family: 'Fredoka', system-ui, sans-serif; font-weight: 600; font-size: 0.92rem;
+      border: none; border-radius: 12px; padding: 10px 16px; cursor: pointer;
+      text-decoration: none; background: var(--accent); color: var(--accent-ink);
+      margin-top: auto;
+    }
+    .estado { color: var(--text-muted); padding: 40px 0; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar"><span class="logo">🧠 Quiz Reels</span></div>
+    <p class="sub">Tus reels generados, listos para ver y descargar desde cualquier lado.</p>
+
+    <div id="contenido">
+      <p class="estado">Cargando reels...</p>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = "https://acenusvwijmbfystlcnl.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_nsEVHoaG12WO3E-ojTt_pQ_Vvzz7Xxq";
+    const BUCKET = "reels";
+
+    const cliente = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const contenedor = document.getElementById("contenido");
+
+    function urlPublica(ruta) {
+      return cliente.storage.from(BUCKET).getPublicUrl(ruta).data.publicUrl;
+    }
+
+    async function cargarGaleria() {
+      const { data: carpetas, error } = await cliente.storage.from(BUCKET).list("", { sortBy: { column: "name", order: "desc" } });
+
+      if (error) {
+        contenedor.innerHTML = `<p class="estado">No se pudo cargar la galería: ${error.message}</p>`;
+        return;
+      }
+
+      const fechas = carpetas.filter(c => c.id === null).map(c => c.name);
+
+      if (fechas.length === 0) {
+        contenedor.innerHTML = `<p class="estado">Todavía no hay reels subidos. Generá uno desde tu compu.</p>`;
+        return;
+      }
+
+      const tarjetas = await Promise.all(fechas.map(async (fecha) => {
+        let info = { encabezado: "🧠 ¿Adivinás cuál?", preguntas: [] };
+        try {
+          const resp = await fetch(urlPublica(`${fecha}/info.json`));
+          if (resp.ok) info = await resp.json();
+        } catch (e) { /* si no hay info.json, mostramos igual el video */ }
+
+        const listaPreguntas = info.preguntas
+          .map(p => `${p.emoji_tema || ""} ${p.pregunta}`)
+          .join(" · ");
+
+        return `
+          <div class="card">
+            <video src="${urlPublica(fecha + "/reel.mp4")}" controls preload="metadata" playsinline></video>
+            <div class="card-body">
+              <span class="fecha">${fecha}</span>
+              <p class="preguntas">${listaPreguntas}</p>
+              <a class="btn" href="${urlPublica(fecha + "/reel.mp4")}" download="quiz_reel_${fecha}.mp4">⬇️ Descargar</a>
+            </div>
+          </div>`;
+      }));
+
+      contenedor.innerHTML = `<div class="grid">${tarjetas.join("")}</div>`;
+    }
+
+    cargarGaleria();
+  </script>
+</body>
+</html>
