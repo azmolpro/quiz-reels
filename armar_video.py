@@ -102,15 +102,18 @@ def _armar_segmento(imagen_plana, duracion, salida, etiqueta=""):
     """Arma un tramo corto de video a partir de UNA imagen ya compuesta.
     Sin audio (se agrega al final, una sola vez)."""
     args = [
-        FFMPEG, "-y", "-loop", "1", "-framerate", "30", "-i", str(imagen_plana),
+        FFMPEG, "-y", "-loop", "1", "-framerate", "15", "-i", str(imagen_plana),
         "-t", str(duracion),
         # preset "ultrafast" + threads=1 + sin b-frames/refs extra: usa
         # mucha menos memoria que "faster" (clave para el límite de
-        # 512 MB de Render free tier). El archivo pesa un poco más, pero
-        # sigue siendo chico.
-        "-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency",
+        # 512 MB de Render free tier). "-tune stillimage" está pensado
+        # justo para esto (una imagen fija sostenida varios segundos).
+        # 15 fps en vez de 30: como la imagen no se mueve, no hay ninguna
+        # diferencia visual, pero FFmpeg procesa la mitad de cuadros —
+        # importante porque el plan gratis de Render solo da 0.1 CPU.
+        "-c:v", "libx264", "-preset", "ultrafast", "-tune", "stillimage",
         "-crf", "27", "-refs", "1", "-bf", "0", "-threads", "1",
-        "-pix_fmt", "yuv420p", "-r", "30",
+        "-pix_fmt", "yuv420p", "-r", "15",
         str(salida),
     ]
     _correr(args, etiqueta=etiqueta or "segmento")
