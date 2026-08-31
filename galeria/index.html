@@ -95,7 +95,7 @@
         return;
       }
 
-      const fechas = carpetas.filter(c => c.id === null).map(c => c.name);
+      const fechas = carpetas.filter(c => c.id === null && !c.name.startsWith("_")).map(c => c.name);
 
       if (fechas.length === 0) {
         contenedor.innerHTML = `<p class="estado">Todavía no hay reels subidos. Generá uno desde tu compu.</p>`;
