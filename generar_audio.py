@@ -13,16 +13,14 @@ from pathlib import Path
 
 import edge_tts
 
+from rutas_sistema import ruta_ffmpeg, ruta_ffprobe
+
 VOZ = "es-ES-ElviraNeural"
 PAUSA_SUSPENSO_SEGUNDOS = 1.6
 CARPETA_AUDIO = Path("audio")
 
-# Rutas fijas a FFmpeg: en Windows el PATH recién instalado no siempre lo
-# ve una terminal ya abierta, así que usamos la ruta completa para evitar
-# errores de "no se encuentra el archivo".
-_FFMPEG_BIN = Path(r"C:\Users\azmol\AppData\Local\Microsoft\WinGet\Packages\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\ffmpeg-9.0.1-full_build\bin")
-FFMPEG = str(_FFMPEG_BIN / "ffmpeg.exe")
-FFPROBE = str(_FFMPEG_BIN / "ffprobe.exe")
+FFMPEG = ruta_ffmpeg()
+FFPROBE = ruta_ffprobe()
 
 LETRAS = ["A", "B", "C"]
 

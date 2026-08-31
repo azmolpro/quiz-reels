@@ -13,6 +13,8 @@ from urllib.parse import urlparse
 
 from PIL import Image, ImageDraw, ImageFont
 
+from rutas_sistema import ruta_fuente_emoji
+
 RAIZ = Path(__file__).parent
 ANCHO, ALTO = 1080, 1920
 
@@ -40,7 +42,7 @@ EMOJI_REGEX = re.compile("[\U0001F300-\U0001FAFF\U00002600-\U000027BF]+", flags=
 def cargar_fuentes():
     fredoka_path = str(RAIZ / "fuentes" / "Fredoka.ttf")
     karla_path = str(RAIZ / "fuentes" / "Karla.ttf")
-    emoji_path = r"C:\Windows\Fonts\seguiemj.ttf"
+    emoji_path = ruta_fuente_emoji()
 
     def fredoka(tam, peso=700):
         f = ImageFont.truetype(fredoka_path, tam)

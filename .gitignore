@@ -13,3 +13,6 @@ fondos/*.mp4
 
 # Viejo, ya no se usa
 salida/
+
+.vercel
+.env*

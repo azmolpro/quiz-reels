@@ -8,11 +8,13 @@ Solo funciona en tu propia compu — nadie más puede entrar.
 """
 
 import json
+import os
+import secrets
 import shutil
 import threading
 from pathlib import Path
 
-from flask import Flask, redirect, render_template, request, send_file, url_for
+from flask import Flask, redirect, render_template, request, send_file, session, url_for
 
 from generar_guion import generar_guion, guardar_borrador
 from generar_audio import generar_audio_del_guion
@@ -22,6 +24,33 @@ from subir_a_supabase import subir_reel
 
 RAIZ = Path(__file__).parent
 app = Flask(__name__)
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", secrets.token_hex(32))
+
+# Si configurás APP_PASSWORD (en Render, por ejemplo), el sitio pide esa
+# clave antes de dejar entrar a nadie. Localmente, si no la configurás,
+# el sitio queda abierto como siempre (para no complicarte en tu PC).
+APP_PASSWORD = os.environ.get("APP_PASSWORD")
+
+
+@app.before_request
+def exigir_login():
+    if not APP_PASSWORD:
+        return
+    if request.path in ("/login", "/static") or request.path.startswith("/static/"):
+        return
+    if not session.get("autenticado"):
+        return redirect(url_for("login"))
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    error = None
+    if request.method == "POST":
+        if request.form.get("password") == APP_PASSWORD:
+            session["autenticado"] = True
+            return redirect(url_for("inicio"))
+        error = "Clave incorrecta."
+    return render_template("login.html", error=error)
 
 
 def ruta_estado(fecha):

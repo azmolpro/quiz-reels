@@ -11,10 +11,10 @@ import subprocess
 import sys
 from pathlib import Path
 
-RAIZ = Path(__file__).parent
+from rutas_sistema import ruta_ffmpeg
 
-_FFMPEG_BIN = Path(r"C:\Users\azmol\AppData\Local\Microsoft\WinGet\Packages\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\ffmpeg-9.0.1-full_build\bin")
-FFMPEG = str(_FFMPEG_BIN / "ffmpeg.exe")
+RAIZ = Path(__file__).parent
+FFMPEG = ruta_ffmpeg()
 
 
 def armar_video(fecha, imagen_fondo="fondos/fondo_galaxia_fijo.png"):

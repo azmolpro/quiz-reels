@@ -14,6 +14,7 @@ import json
 import os
 import time
 from datetime import date
+from pathlib import Path
 
 import requests
 from dotenv import load_dotenv
@@ -172,6 +173,7 @@ def generar_guion(fecha=None):
 
 
 def guardar_borrador(guion):
+    Path("borradores").mkdir(exist_ok=True)
     nombre_archivo = f"borradores/{guion['fecha']}.json"
     with open(nombre_archivo, "w", encoding="utf-8") as f:
         json.dump(guion, f, indent=2, ensure_ascii=False)

@@ -9,11 +9,11 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
+from rutas_sistema import ruta_ffmpeg
+
 ANCHO, ALTO = 1080, 1920
 RAIZ = Path(__file__).parent
-
-_FFMPEG_BIN = Path(r"C:\Users\azmol\AppData\Local\Microsoft\WinGet\Packages\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\ffmpeg-9.0.1-full_build\bin")
-FFMPEG = str(_FFMPEG_BIN / "ffmpeg.exe")
+FFMPEG = ruta_ffmpeg()
 
 # Colores pastel, de la misma paleta que las tarjetas del quiz
 STOP_A = np.array([238, 234, 255])   # lavanda pastel
