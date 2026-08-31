@@ -20,7 +20,8 @@ from generar_guion import generar_guion, guardar_borrador
 from generar_audio import generar_audio_del_guion
 from generar_capas import generar_capas
 from armar_video import armar_video
-from subir_a_supabase import subir_reel
+from subir_a_supabase import subir_reel, borrar_reel
+from historial_temas import agregar_fuentes_usadas
 
 RAIZ = Path(__file__).parent
 app = Flask(__name__)
@@ -129,6 +130,11 @@ def pipeline_completo(guion):
         subir_reel(fecha, guion)
         _log_memoria("después de subir")
 
+        # Recién ahora que el reel está terminado y subido, marcamos estas
+        # fuentes como "usadas" — si algo falla antes, no las descartamos.
+        fuentes = [p["fuente"] for p in guion["preguntas"]]
+        agregar_fuentes_usadas(fuentes)
+
         escribir_estado(fecha, "listo", "Video listo.")
     except Exception as e:
         import traceback
@@ -196,12 +202,16 @@ def descargar(fecha):
 
 @app.route("/borrar/<fecha>", methods=["POST"])
 def borrar(fecha):
-    """Borra todo lo generado para esa fecha (audio, capas, video y el
-    guion) para liberar espacio, una vez que ya descargaste lo que
-    necesitabas. No borra nada de otras fechas."""
+    """Borra todo lo generado para esa fecha: lo local (audio, capas,
+    video, guion) Y lo que está subido a Supabase — para que no quede
+    dando vueltas en la galería de Vercel tampoco. No borra otras fechas."""
     for carpeta in [RAIZ / "audio" / fecha, RAIZ / "capas" / fecha, RAIZ / "video" / fecha]:
         shutil.rmtree(carpeta, ignore_errors=True)
     (RAIZ / "borradores" / f"{fecha}.json").unlink(missing_ok=True)
+    try:
+        borrar_reel(fecha)
+    except Exception:
+        pass  # puede que nunca se haya llegado a subir; no pasa nada
     return redirect(url_for("inicio"))
 
 

@@ -13,10 +13,12 @@ la IA escriba por su cuenta.
 import json
 import os
 import time
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
 import requests
+
+from historial_temas import cargar_fuentes_usadas
 from dotenv import load_dotenv
 from google import genai
 from google.genai.errors import ClientError, ServerError
@@ -160,10 +162,26 @@ def generar_guion(fecha=None):
         + traer_datos_reales("births", mes, dia)
         + traer_datos_reales("holidays", mes, dia)
     )
+
+    # No repetir hechos que ya usamos en un reel anterior (el historial se
+    # guarda en Supabase, así que esto funciona aunque el servidor se haya
+    # reiniciado mientras tanto).
+    ya_usadas = cargar_fuentes_usadas()
+    datos_sin_repetir = [d for d in datos if d["fuente"] not in ya_usadas]
+    # Si por algún motivo ya usamos casi todo el pool de hoy, mejor seguir
+    # con el original completo antes que fallar por falta de candidatos.
+    if len(datos_sin_repetir) >= 10:
+        datos = datos_sin_repetir
+
     preguntas = elegir_y_redactar(cliente, datos, cantidad=3)
 
+    # Identificador único por generación (fecha + hora): así, si generás
+    # varias veces el mismo día, cada una queda como un reel aparte en vez
+    # de pisar al anterior.
+    id_reel = datetime.now().strftime("%Y-%m-%d-%H%M%S")
+
     guion = {
-        "fecha": fecha.isoformat(),
+        "fecha": id_reel,
         "encabezado": "🧠 ¿Adivinás cuál? 🔍",
         "preguntas": preguntas,
         "cierre": "Seguime para más datos curiosos que seguro no sabías 🤯",

@@ -64,3 +64,12 @@ def subir_reel(fecha, guion):
             return url
         time.sleep(2)
     raise RuntimeError(f"El video se subió pero no quedó accesible en {url} (status {r.status_code})")
+
+
+def borrar_reel(fecha):
+    """Borra el video y su info de Supabase (además de los archivos
+    locales, que se borran aparte). Así el botón de 'Borrar' limpia todo,
+    no solo lo que está en tu compu."""
+    cliente = _cliente()
+    storage = cliente.storage.from_(BUCKET)
+    storage.remove([f"{fecha}/reel.mp4", f"{fecha}/info.json"])
