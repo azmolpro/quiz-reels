@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block titulo %}Quiz Reels{% endblock %}
+{% block contenido %}
+
+<div class="card">
+  <h2>Generar un reel nuevo</h2>
+  <p class="muted">Busca hechos reales de hoy en Wikipedia y arma un borrador de quiz con IA, para que lo revises antes de nada más.</p>
+  <form action="{{ url_for('generar') }}" method="post">
+    <button class="btn" type="submit">✨ Generar guion de hoy</button>
+  </form>
+</div>
+
+<h3 style="margin-top:32px;">Tus reels</h3>
+
+{% if not borradores %}
+  <p class="muted">Todavía no generaste ningún guion.</p>
+{% endif %}
+
+{% for b in borradores %}
+  <div class="card fila">
+    <div>
+      <strong>{{ b.fecha }}</strong><br>
+      {% if b.error %}
+        <span class="muted">{{ b.error }}</span>
+      {% endif %}
+    </div>
+    <div class="fila" style="gap:10px;">
+      {% if b.video_listo %}
+        <span class="tag listo">Listo</span>
+        <a class="btn secundario" href="{{ url_for('ver', fecha=b.fecha) }}">Ver video</a>
+      {% elif b.procesando %}
+        <span class="tag procesando">Procesando</span>
+        <a class="btn secundario" href="{{ url_for('procesando', fecha=b.fecha) }}">Ver progreso</a>
+      {% elif b.error %}
+        <span class="tag error">Error</span>
+        <a class="btn secundario" href="{{ url_for('revisar', fecha=b.fecha) }}">Revisar</a>
+      {% else %}
+        <span class="tag borrador">Borrador</span>
+        <a class="btn secundario" href="{{ url_for('revisar', fecha=b.fecha) }}">Revisar</a>
+      {% endif %}
+    </div>
+  </div>
+{% endfor %}
+
+{% endblock %}

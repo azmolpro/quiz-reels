@@ -1,0 +1,15 @@
+# Entorno y secretos
+.venv/
+.env
+__pycache__/
+*.pyc
+
+# Todo lo que la app GENERA solo, no hace falta versionarlo
+borradores/
+audio/
+capas/
+video/
+fondos/*.mp4
+
+# Viejo, ya no se usa
+salida/

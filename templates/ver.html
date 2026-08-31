@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block titulo %}Tu reel — {{ fecha }}{% endblock %}
+{% block contenido %}
+
+<p><a href="{{ url_for('inicio') }}">← Volver</a></p>
+
+<h2>🎬 Tu reel del {{ fecha }}</h2>
+
+<div class="card" style="text-align:center;">
+  <video src="{{ url_for('video_archivo', fecha=fecha) }}" controls playsinline
+         style="width:100%; max-width:340px; aspect-ratio:9/16; border-radius:14px; background:#000;"></video>
+</div>
+
+<div class="fila" style="gap:12px;">
+  <a class="btn" href="{{ url_for('descargar', fecha=fecha) }}">⬇️ Descargar video</a>
+  <a class="btn secundario" href="{{ url_for('inicio') }}">Volver al inicio</a>
+</div>
+
+<p class="muted" style="margin-top:20px;">Descargalo y subilo manualmente a TikTok, Instagram, YouTube Shorts o Facebook Reels desde la app de cada red.</p>
+
+{% endblock %}

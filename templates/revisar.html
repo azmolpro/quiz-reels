@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block titulo %}Revisar guion — {{ guion.fecha }}{% endblock %}
+{% block contenido %}
+
+<p><a href="{{ url_for('inicio') }}">← Volver</a></p>
+
+<h2>Revisá el guion del {{ guion.fecha }}</h2>
+<p class="muted">Este es el paso que NO se automatiza: revisá que los datos, las fuentes y el tono estén bien antes de generar el video.</p>
+
+<div class="card">
+  <strong>{{ guion.encabezado }}</strong>
+</div>
+
+{% for p in guion.preguntas %}
+  <div class="card">
+    <div class="muted" style="text-transform:uppercase; font-weight:700; font-size:0.8rem; margin-bottom:6px;">
+      Pregunta {{ loop.index }} {% if p.emoji_tema %}{{ p.emoji_tema }}{% endif %}
+    </div>
+    <p style="font-weight:600; font-size:1.1rem;">{{ p.pregunta }}</p>
+    <ul style="list-style:none; padding:0; margin:0 0 12px;">
+      {% for opcion in p.opciones %}
+        <li style="padding:8px 12px; margin-bottom:6px; border-radius:10px; background: {% if opcion == p.respuesta_correcta %}#dcfce7{% else %}var(--surface-alt){% endif %};">
+          {% if opcion == p.respuesta_correcta %}✅{% else %}◯{% endif %} {{ opcion }}
+        </li>
+      {% endfor %}
+    </ul>
+    <p class="muted"><strong>Por qué:</strong> {{ p.explicacion }}</p>
+    <p class="muted">🔗 <a href="{{ p.fuente }}" target="_blank" rel="noopener">{{ p.fuente }}</a></p>
+  </div>
+{% endfor %}
+
+<div class="card">
+  <strong>Cierre:</strong> {{ guion.cierre }}
+</div>
+
+<div class="fila" style="margin-top: 20px; gap: 12px;">
+  <form action="{{ url_for('aprobar', fecha=guion.fecha) }}" method="post">
+    <button class="btn verde" type="submit">✅ Aprobar y generar video</button>
+  </form>
+  <form action="{{ url_for('generar') }}" method="post">
+    <button class="btn secundario" type="submit">🔄 Generar otro guion</button>
+  </form>
+</div>
+
+{% endblock %}
