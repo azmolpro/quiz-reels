@@ -51,7 +51,14 @@ def _armar_segmento(imagen_fondo, capa_archivo, duracion, fundido, salida):
         args += ["-vf", "scale=1080:1920,setsar=1"]
 
     args += ["-t", str(duracion)]
-    args += ["-c:v", "libx264", "-preset", "faster", "-crf", "27", "-pix_fmt", "yuv420p", "-r", "30"]
+    # preset "ultrafast" + threads=1 + sin b-frames/refs extra: usa mucha
+    # menos memoria que "faster" (importante para el límite de 512 MB de
+    # Render free tier). El archivo pesa un poco más, pero sigue siendo chico.
+    args += [
+        "-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency",
+        "-crf", "27", "-refs", "1", "-bf", "0", "-threads", "1",
+        "-pix_fmt", "yuv420p", "-r", "30",
+    ]
     args += [str(salida)]
 
     _correr(args)
