@@ -5,10 +5,22 @@
 <div class="card">
   <h2>Generar un reel nuevo</h2>
   <p class="muted">Busca hechos reales de hoy en Wikipedia y arma un borrador de quiz con IA, para que lo revises antes de nada más.</p>
-  <form action="{{ url_for('generar') }}" method="post">
-    <button class="btn" type="submit">✨ Generar guion de hoy</button>
+  <form action="{{ url_for('generar') }}" method="post" onsubmit="return iniciarCarga(this)">
+    <button class="btn" type="submit" id="btn-generar">✨ Generar guion de hoy</button>
+    <p class="muted" id="aviso-carga" style="display:none; margin-top:10px;">
+      ⏳ Buscando datos y armando las preguntas con IA... puede tardar hasta 30 segundos, no cierres esta página.
+    </p>
   </form>
 </div>
+
+<script>
+  function iniciarCarga(form) {
+    document.getElementById('btn-generar').disabled = true;
+    document.getElementById('btn-generar').textContent = 'Generando...';
+    document.getElementById('aviso-carga').style.display = 'block';
+    return true;
+  }
+</script>
 
 <h3 style="margin-top:32px;">Tus reels</h3>
 
@@ -28,6 +40,9 @@
       {% if b.video_listo %}
         <span class="tag listo">Listo</span>
         <a class="btn secundario" href="{{ url_for('ver', fecha=b.fecha) }}">Ver video</a>
+        <form action="{{ url_for('borrar', fecha=b.fecha) }}" method="post" style="display:inline;" onsubmit="return confirm('¿Borrar los archivos del {{ b.fecha }}? Asegurate de haberlo descargado antes.');">
+          <button class="btn secundario" type="submit" title="Borrar" style="padding:14px 16px;">🗑️</button>
+        </form>
       {% elif b.procesando %}
         <span class="tag procesando">Procesando</span>
         <a class="btn secundario" href="{{ url_for('procesando', fecha=b.fecha) }}">Ver progreso</a>

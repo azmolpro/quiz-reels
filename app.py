@@ -8,6 +8,7 @@ Solo funciona en tu propia compu — nadie más puede entrar.
 """
 
 import json
+import shutil
 import threading
 from pathlib import Path
 
@@ -17,6 +18,7 @@ from generar_guion import generar_guion, guardar_borrador
 from generar_audio import generar_audio_del_guion
 from generar_capas import generar_capas
 from armar_video import armar_video
+from subir_a_supabase import subir_reel
 
 RAIZ = Path(__file__).parent
 app = Flask(__name__)
@@ -72,6 +74,9 @@ def pipeline_completo(guion):
 
         escribir_estado(fecha, "video", "Armando el video final...")
         armar_video(fecha)
+
+        escribir_estado(fecha, "subiendo", "Subiendo el video a la nube...")
+        subir_reel(fecha, guion)
 
         escribir_estado(fecha, "listo", "Video listo.")
     except Exception as e:
@@ -136,5 +141,18 @@ def descargar(fecha):
     )
 
 
+@app.route("/borrar/<fecha>", methods=["POST"])
+def borrar(fecha):
+    """Borra todo lo generado para esa fecha (audio, capas, video y el
+    guion) para liberar espacio, una vez que ya descargaste lo que
+    necesitabas. No borra nada de otras fechas."""
+    for carpeta in [RAIZ / "audio" / fecha, RAIZ / "capas" / fecha, RAIZ / "video" / fecha]:
+        shutil.rmtree(carpeta, ignore_errors=True)
+    (RAIZ / "borradores" / f"{fecha}.json").unlink(missing_ok=True)
+    return redirect(url_for("inicio"))
+
+
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    # host="0.0.0.0" hace que el sitio también responda a otros dispositivos
+    # de tu misma red WiFi (como el celular), no solo a esta computadora.
+    app.run(debug=True, port=5000, host="0.0.0.0")

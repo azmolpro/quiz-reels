@@ -18,4 +18,11 @@
 
 <p class="muted" style="margin-top:20px;">Descargalo y subilo manualmente a TikTok, Instagram, YouTube Shorts o Facebook Reels desde la app de cada red.</p>
 
+<div class="card" style="margin-top:24px; border-color:#fecaca;">
+  <p class="muted"><strong>¿Ya lo descargaste?</strong> Podés borrar los archivos de esta fecha de tu compu para liberar espacio. Esto no afecta a tus otros reels.</p>
+  <form action="{{ url_for('borrar', fecha=fecha) }}" method="post" onsubmit="return confirm('¿Borrar todos los archivos del reel del {{ fecha }}? Asegurate de haberlo descargado antes.');">
+    <button class="btn secundario" type="submit" style="color:#b91c1c;">🗑️ Borrar archivos de este reel</button>
+  </form>
+</div>
+
 {% endblock %}

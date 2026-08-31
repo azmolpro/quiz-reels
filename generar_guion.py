@@ -87,11 +87,18 @@ def elegir_y_redactar(cliente, datos_reales, cantidad=3):
     prompt = f"""Tenés una lista de hechos REALES y verificados, cada uno con un número.
 
 PASO 1 — ELEGIR: elegí los {cantidad} hechos que MÁS le van a volar la cabeza a un adolescente
-de 12 a 17 años, para un quiz viral en redes sociales (estilo "no lo vas a creer"). Priorizá SIEMPRE,
-en este orden: 1) animales (habilidades increíbles, récords, curiosidades del cuerpo animal),
-2) récords extremos y Guinness, 3) espacio y ciencia loca que suena a ciencia ficción pero es real,
-4) cuerpo humano, tecnología, videojuegos, inventos que cambiaron la vida cotidiana, 5) datos
-históricos SOLO si tienen un giro sorprendente. DESCARTÁ SIEMPRE, sin excepción (el público son menores de edad): drogas, alcohol, tabaco,
+de 12 a 17 años, para un quiz viral en redes sociales (estilo "no lo vas a creer"). El criterio real
+es UNO SOLO: ¿esto le sacaría un "¿¿QUÉ??" a un pibe de 15 años HOY, en 2026? Si tenés que explicarle
+primero quién es alguien o por qué importa, no sirve. Priorizá SIEMPRE, en este orden:
+1) animales (habilidades increíbles, récords, curiosidades del cuerpo animal),
+2) espacio y ciencia loca que suena a ciencia ficción pero es real,
+3) récords extremos/Guinness de cosas físicas o naturales (el más grande, rápido, raro del mundo),
+4) cuerpo humano, tecnología, gaming, internet, inventos que se usan en la vida diaria de HOY,
+5) datos históricos SOLO si tienen un giro tan loco que sorprendería a cualquiera, sin importar la edad.
+EVITÁ especialmente trivia de la industria del entretenimiento de hace décadas (charts de música,
+premios, ventas de discos, récords de Billboard, cine viejo) — son datos de "libro de trivia para
+adultos", no algo que un adolescente de hoy reconozca o le importe, aunque técnicamente sea un récord.
+DESCARTÁ SIEMPRE, sin excepción (el público son menores de edad): drogas, alcohol, tabaco,
 contenido sexual o romántico, violencia gráfica, autolesión, apuestas, y también, salvo que sea
 verdaderamente asombroso: política, elecciones, gobiernos, diplomacia, guerras, ejércitos, armas,
 atentados, desastres, muertes, funerales, economía, empresas, bolsa, religión institucional,
