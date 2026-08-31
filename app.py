@@ -109,6 +109,8 @@ def pipeline_completo(guion):
 
         escribir_estado(fecha, "listo", "Video listo.")
     except Exception as e:
+        import traceback
+        traceback.print_exc()  # queda en los logs para poder diagnosticar
         escribir_estado(fecha, "error", str(e))
 
 

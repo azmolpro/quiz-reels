@@ -54,10 +54,60 @@ def cargar_fuentes():
         f.set_variation_by_axes([peso])
         return f
 
-    def emoji(tam):
-        return ImageFont.truetype(emoji_path, tam)
+    return fredoka, karla, emoji_path
 
-    return fredoka, karla, emoji
+
+_TAMANOS_NATIVOS_EMOJI = {}
+
+
+def _fuente_emoji_disponible(ruta_fuente, tamano_deseado):
+    """Algunas fuentes de emoji (como Noto Color Emoji en Linux) tienen
+    UN SOLO tamaño de bitmap fijo y rechazan cualquier otro. Probamos el
+    tamaño pedido; si la fuente lo rechaza, buscamos el tamaño nativo que
+    sí acepta (y lo recordamos, para no probar de nuevo cada vez)."""
+    try:
+        return ImageFont.truetype(ruta_fuente, tamano_deseado), tamano_deseado
+    except OSError:
+        pass
+
+    if ruta_fuente in _TAMANOS_NATIVOS_EMOJI:
+        nativo = _TAMANOS_NATIVOS_EMOJI[ruta_fuente]
+        return ImageFont.truetype(ruta_fuente, nativo), nativo
+
+    for candidato in (136, 128, 109, 96, 72, 64, 48, 32, 24):
+        try:
+            fuente = ImageFont.truetype(ruta_fuente, candidato)
+            _TAMANOS_NATIVOS_EMOJI[ruta_fuente] = candidato
+            return fuente, candidato
+        except OSError:
+            continue
+    raise OSError(f"No encontré ningún tamaño válido para la fuente de emoji: {ruta_fuente}")
+
+
+def pegar_emoji(img, texto_emoji, tamano, xy, ruta_emoji):
+    """Dibuja emoji(s) a color sobre 'img' en la posición xy (esquina
+    superior izquierda), al tamaño pedido. Si la fuente instalada es de
+    tamaño fijo, lo renderiza a su tamaño nativo y lo escala — así se ve
+    igual en Windows (desarrollo) y Linux (Render). Devuelve el x donde
+    terminó, para poder seguir dibujando texto al lado."""
+    fuente, tamano_real = _fuente_emoji_disponible(ruta_emoji, tamano)
+
+    lienzo_tmp = Image.new("RGBA", (tamano_real * (len(texto_emoji) + 1), tamano_real * 2), (0, 0, 0, 0))
+    d = ImageDraw.Draw(lienzo_tmp)
+    d.text((2, 2), texto_emoji, font=fuente, embedded_color=True)
+
+    caja = lienzo_tmp.getbbox()
+    if not caja:
+        return int(xy[0])
+    recorte = lienzo_tmp.crop(caja)
+
+    if tamano_real != tamano:
+        escala = tamano / tamano_real
+        nuevo_tam = (max(1, round(recorte.width * escala)), max(1, round(recorte.height * escala)))
+        recorte = recorte.resize(nuevo_tam, Image.LANCZOS)
+
+    img.paste(recorte, (int(xy[0]), int(xy[1])), recorte)
+    return int(xy[0]) + recorte.width
 
 
 def envolver_texto(draw, texto, font, ancho_max):
@@ -76,27 +126,6 @@ def envolver_texto(draw, texto, font, ancho_max):
     return lineas
 
 
-def dibujar_mixto(draw, xy, texto, font_texto, font_emoji, fill):
-    """Dibuja una línea con texto y emoji mezclados, avanzando el cursor X."""
-    x, y = xy
-    partes = EMOJI_REGEX.split(texto)
-    emojis = EMOJI_REGEX.findall(texto)
-    trozos = []
-    for i, parte in enumerate(partes):
-        if parte:
-            trozos.append((parte, font_texto, fill, False))
-        if i < len(emojis):
-            trozos.append((emojis[i], font_emoji, None, True))
-
-    for contenido, font, color, es_emoji in trozos:
-        if es_emoji:
-            draw.text((x, y), contenido, font=font, embedded_color=True)
-        else:
-            draw.text((x, y), contenido, font=font, fill=color)
-        x += draw.textlength(contenido, font=font)
-    return x
-
-
 def panel_redondeado(draw, box, color, radio=28):
     draw.rounded_rectangle(box, radius=radio, fill=color)
 
@@ -105,10 +134,10 @@ def nuevo_lienzo():
     return Image.new("RGBA", (ANCHO, ALTO), (0, 0, 0, 0))
 
 
-def dibujar_header(img, draw, fredoka, emoji_font):
+def dibujar_header(img, draw, fredoka, ruta_emoji):
     texto = "¿Adivinás cuál?"
     tam_fuente = fredoka(52)
-    tam_emoji = emoji_font(52)
+    tam_emoji = 52
 
     ancho_texto = draw.textlength(texto, font=tam_fuente)
     ancho_total = 60 + ancho_texto + 60  # emoji izq + texto + emoji der (aprox)
@@ -116,13 +145,13 @@ def dibujar_header(img, draw, fredoka, emoji_font):
     panel_redondeado(draw, caja, ACENTO, radio=50)
 
     x = caja[0] + 30
-    x = dibujar_mixto(draw, (x, 88), "🧠 ", tam_fuente, tam_emoji, BLANCO)
-    draw.text((x, 95), texto, font=tam_fuente, fill=BLANCO)
-    x += ancho_texto
-    dibujar_mixto(draw, (x + 10, 88), " 🔍", tam_fuente, tam_emoji, BLANCO)
+    x = pegar_emoji(img, "🧠", tam_emoji, (x, 84), ruta_emoji)
+    draw.text((x + 12, 95), texto, font=tam_fuente, fill=BLANCO)
+    x = x + 12 + ancho_texto + 14
+    pegar_emoji(img, "🔍", tam_emoji, (x, 84), ruta_emoji)
 
 
-def dibujar_sticker_emoji(img, emoji_font, emoji, cx, cy, diametro=150, angulo=-10):
+def dibujar_sticker_emoji(img, ruta_emoji, emoji, cx, cy, diametro=150, angulo=-10):
     """Dibuja el emoji temático como una 'stickercita' redonda y un poco
     inclinada, como si estuviera pegada arriba de la tarjeta."""
     tam_lienzo = diametro + 40
@@ -131,22 +160,19 @@ def dibujar_sticker_emoji(img, emoji_font, emoji, cx, cy, diametro=150, angulo=-
     borde = (tam_lienzo - diametro) // 2
     d.ellipse((borde, borde, borde + diametro, borde + diametro), fill=BLANCO, outline=ACENTO, width=6)
 
-    f_emoji = emoji_font(int(diametro * 0.6))
-    bbox = d.textbbox((0, 0), emoji, font=f_emoji)
-    ancho_e, alto_e = bbox[2] - bbox[0], bbox[3] - bbox[1]
-    d.text((tam_lienzo / 2 - ancho_e / 2 - bbox[0], tam_lienzo / 2 - alto_e / 2 - bbox[1]),
-           emoji, font=f_emoji, embedded_color=True)
+    tam_emoji = int(diametro * 0.6)
+    pegar_emoji(sticker, emoji, tam_emoji, (tam_lienzo / 2 - tam_emoji / 2, tam_lienzo / 2 - tam_emoji / 2), ruta_emoji)
 
     sticker = sticker.rotate(angulo, resample=Image.BICUBIC, expand=True)
     img.paste(sticker, (int(cx - sticker.width / 2), int(cy - sticker.height / 2)), sticker)
 
 
 def dibujar_pregunta(guion_pregunta, numero, total, revelar):
-    fredoka, karla, emoji_font = cargar_fuentes()
+    fredoka, karla, ruta_emoji = cargar_fuentes()
     img = nuevo_lienzo()
     draw = ImageDraw.Draw(img)
 
-    dibujar_header(img, draw, fredoka, emoji_font)
+    dibujar_header(img, draw, fredoka, ruta_emoji)
 
     margen = 70
     ancho_util = ANCHO - margen * 2
@@ -169,7 +195,7 @@ def dibujar_pregunta(guion_pregunta, numero, total, revelar):
 
     emoji_tema = guion_pregunta.get("emoji_tema")
     if emoji_tema:
-        dibujar_sticker_emoji(img, emoji_font, emoji_tema, ANCHO - margen - 60, y_panel, diametro=140)
+        dibujar_sticker_emoji(img, ruta_emoji, emoji_tema, ANCHO - margen - 60, y_panel, diametro=140)
 
     # --- Opciones ---
     letras = ["A", "B", "C"]
@@ -201,8 +227,7 @@ def dibujar_pregunta(guion_pregunta, numero, total, revelar):
             y_op_texto += 48
 
         if revelar and es_correcta:
-            marca_font = emoji_font(48)
-            draw.text((ANCHO - margen - 70, y_opcion + 38), "✔️", font=marca_font, embedded_color=True)
+            pegar_emoji(img, "✔️", 48, (ANCHO - margen - 70, y_opcion + 38), ruta_emoji)
 
         y_opcion += alto_opcion + 22
 
@@ -216,8 +241,7 @@ def dibujar_pregunta(guion_pregunta, numero, total, revelar):
         panel_redondeado(draw, (margen, y_expl, ANCHO - margen, y_expl + alto_expl), PANEL_EXPLICACION, radio=32)
 
         etiqueta_font = karla(30, 700)
-        etiqueta_emoji_font = emoji_font(30)
-        draw.text((margen + 34, y_expl + 24), "💡", font=etiqueta_emoji_font, embedded_color=True)
+        pegar_emoji(img, "💡", 30, (margen + 34, y_expl + 22), ruta_emoji)
         draw.text((margen + 34 + 40, y_expl + 26), "POR QUÉ", font=etiqueta_font, fill=ACENTO)
 
         y_t = y_expl + 70
@@ -233,11 +257,11 @@ def dibujar_pregunta(guion_pregunta, numero, total, revelar):
 
 
 def dibujar_cierre(texto_cierre):
-    fredoka, karla, emoji_font = cargar_fuentes()
+    fredoka, karla, ruta_emoji = cargar_fuentes()
     img = nuevo_lienzo()
     draw = ImageDraw.Draw(img)
 
-    dibujar_header(img, draw, fredoka, emoji_font)
+    dibujar_header(img, draw, fredoka, ruta_emoji)
 
     margen = 90
     cierre_font = fredoka(64, 700)
